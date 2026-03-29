@@ -1,0 +1,223 @@
+-- Services
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local SoundService = game:GetService("SoundService")
+local UserInputService = game:GetService("UserInputService")
+local RunService = game:GetService("RunService")
+
+-- Main GUI
+local ScreenGui = Instance.new("ScreenGui")
+ScreenGui.Name = "PremiumKeySystem"
+ScreenGui.Parent = game:GetService("CoreGui")
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+ScreenGui.DisplayOrder = 999
+
+local MainFrame = Instance.new("Frame")
+MainFrame.Size = UDim2.new(0, 400, 0, 650) -- tambah height untuk semua fitur
+MainFrame.Position = UDim2.new(0.5, -200, 0.5, -325)
+MainFrame.AnchorPoint = Vector2.new(0.5, 0.5)
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.BackgroundTransparency = 0.05
+MainFrame.BorderSizePixel = 0
+MainFrame.ClipsDescendants = true
+MainFrame.Parent = ScreenGui
+
+local UICorner = Instance.new("UICorner")
+UICorner.CornerRadius = UDim.new(0, 12)
+UICorner.Parent = MainFrame
+
+-- TopBar
+local TopBar = Instance.new("Frame")
+TopBar.Size = UDim2.new(1, 0, 0, 50)
+TopBar.BackgroundColor3 = Color3.fromRGB(30, 30, 40)
+TopBar.BorderSizePixel = 0
+TopBar.ZIndex = 2
+TopBar.Parent = MainFrame
+
+local Title = Instance.new("TextLabel")
+Title.Text = "AnimeWare Security"
+Title.Font = Enum.Font.GothamBlack
+Title.TextSize = 20
+Title.TextColor3 = Color3.fromRGB(200, 170, 255)
+Title.Size = UDim2.new(1, 0, 1, 0)
+Title.BackgroundTransparency = 1
+Title.Parent = TopBar
+
+-- Key Entry
+local KeyBox = Instance.new("TextBox")
+KeyBox.Size = UDim2.new(0.8, 0, 0, 45)
+KeyBox.Position = UDim2.new(0.1, 0, 0.08, 0)
+KeyBox.BackgroundColor3 = Color3.fromRGB(40, 40, 50)
+KeyBox.PlaceholderText = "Enter your key..."
+KeyBox.Text = ""
+KeyBox.TextColor3 = Color3.new(1, 1, 1)
+KeyBox.Font = Enum.Font.Gotham
+KeyBox.TextSize = 16
+KeyBox.TextXAlignment = Enum.TextXAlignment.Center
+KeyBox.Parent = MainFrame
+
+-- Notification function
+local function ShowNotification(message)
+    local notif = Instance.new("Frame")
+    notif.Size = UDim2.new(0.8, 0, 0, 50)
+    notif.Position = UDim2.new(0.1, 0, 0.92, 0)
+    notif.BackgroundColor3 = Color3.fromRGB(60, 60, 80)
+    notif.BorderSizePixel = 0
+    notif.ZIndex = 10
+
+    local stroke = Instance.new("UIStroke")
+    stroke.Color = Color3.fromRGB(100, 255, 100)
+    stroke.Thickness = 2
+    stroke.Parent = notif
+
+    local notifCorner = Instance.new("UICorner")
+    notifCorner.CornerRadius = UDim.new(0, 8)
+    notifCorner.Parent = notif
+
+    local textLabel = Instance.new("TextLabel")
+    textLabel.Size = UDim2.new(1, 0, 1, 0)
+    textLabel.Text = message
+    textLabel.Font = Enum.Font.GothamBold
+    textLabel.TextSize = 18
+    textLabel.TextColor3 = Color3.fromRGB(255, 255, 255)
+    textLabel.BackgroundTransparency = 1
+    textLabel.Parent = notif
+
+    TweenService:Create(notif, TweenInfo.new(0.3), {BackgroundTransparency = 0.3}):Play()
+
+    delay(3, function()
+        TweenService:Create(notif, TweenInfo.new(0.5), {BackgroundTransparency = 1}):Play()
+        wait(0.5)
+        notif:Destroy()
+    end)
+
+    notif.Parent = MainFrame
+end
+
+-- Button Creation Helper
+local function CreateButton(name, position, callback)
+    local btn = Instance.new("TextButton")
+    btn.Name = name
+    btn.Size = UDim2.new(0.8, 0, 0, 35)
+    btn.Position = position
+    btn.BackgroundColor3 = Color3.fromRGB(100, 65, 165)
+    btn.TextColor3 = Color3.new(1, 1, 1)
+    btn.Font = Enum.Font.GothamBold
+    btn.TextSize = 16
+    btn.Text = name
+    btn.Parent = MainFrame
+
+    btn.MouseButton1Click:Connect(function()
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://130976108"
+        sound.Parent = SoundService
+        sound:Play()
+        callback()
+    end)
+
+    return btn
+end
+
+-- Key Validation
+local function validateKey(input)
+    local validKeys = {
+        "X7F2K9LQW3PAM8ZTF",
+        "M7X2LQ9TR8NVDJ",
+        "mortalbabapro"
+    }
+
+    for _, key in pairs(validKeys) do
+        if input == key then
+            return true
+        end
+    end
+    return false
+end
+
+-- Key Submit
+CreateButton("SUBMIT KEY", UDim2.new(0.1, 0, 0.18, 0), function()
+    if validateKey(KeyBox.Text) then
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://226892749"
+        sound.Parent = SoundService
+        sound:Play()
+        ScreenGui:Destroy()
+        loadstring(game:HttpGet("https://raw.githubusercontent.com/FemWareDevelper/Universal/refs/heads/main/WorldZeroKey"))()
+    else
+        local sound = Instance.new("Sound")
+        sound.SoundId = "rbxassetid://88503293218755"
+        sound.Parent = SoundService
+        sound:Play()
+        KeyBox.Text = ""
+        KeyBox.PlaceholderText = "Invalid key! Try again"
+    end
+end)
+
+-- Key & Discord Buttons
+CreateButton("GET KEY", UDim2.new(0.1, 0, 0.25, 0), function()
+    setclipboard("https://link-target.net/1348019/femware-scripts")
+    ShowNotification("KEY COPIED TO CLIPBOARD!")
+end)
+CreateButton("DISCORD", UDim2.new(0.1, 0, 0.32, 0), function()
+    setclipboard("https://discord.gg/dG84y4Ve67")
+    ShowNotification("DISCORD LINK COPIED!")
+end)
+
+-- Features Menu
+local featureList = {
+    "[+] Kill Aura",
+    "[+] Bypass Anti Cheat",
+    "[+] Fast Sprint",
+    "[+] Auto Farm",
+    "[+] Auto Feed Pet",
+    "[+] Auto Collect Coins",
+    "[+] ESP - Show Names",
+    "[+] ESP - Show Distance",
+    "[+] ESP - Show Health",
+    "[+] ESP - Show Health Bar",
+    "[+] ESP - Show Boxes",
+    "[+] Teleports (World 1-7 + PvP Arena)",
+    "[+] Farm Method (Above, Below, Front, Behind)"
+}
+
+local yPos = 0.4
+for _, feature in ipairs(featureList) do
+    CreateButton(feature, UDim2.new(0.1, 0, yPos, 0), function()
+        ShowNotification(feature .. " toggled!")
+    end)
+    yPos = yPos + 0.06
+end
+
+-- Sliders (contoh kerangka)
+local sliderList = {
+    "Farm Radius",
+    "Distance from Mob",
+    "Sprint Speed",
+    "Coin Collection Range",
+    "ESP Max Distance"
+}
+for _, sliderName in ipairs(sliderList) do
+    local label = Instance.new("TextLabel")
+    label.Text = sliderName
+    label.Size = UDim2.new(0.6, 0, 0, 20)
+    label.Position = UDim2.new(0.1, 0, yPos, 0)
+    label.BackgroundTransparency = 1
+    label.TextColor3 = Color3.new(1,1,1)
+    label.Font = Enum.Font.Gotham
+    label.TextSize = 14
+    label.Parent = MainFrame
+
+    local slider = Instance.new("TextBox")
+    slider.PlaceholderText = "Enter value..."
+    slider.Size = UDim2.new(0.8, 0, 0, 25)
+    slider.Position = UDim2.new(0.1, 0, yPos+0.03, 0)
+    slider.BackgroundColor3 = Color3.fromRGB(50,50,60)
+    slider.TextColor3 = Color3.new(1,1,1)
+    slider.Font = Enum.Font.Gotham
+    slider.TextSize = 14
+    slider.Parent = MainFrame
+
+    yPos = yPos + 0.09
+end
+
+MainFrame.Visible = true
