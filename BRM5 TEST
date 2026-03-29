@@ -1,35 +1,63 @@
--- [[ TOKAI HUB - OPTIMIZED FULL FEATURE (HEAD HITBOX) ]]
+-- [[ TOKAI HUB - FINAL UI VERSION ]]
 
+------------------------------------------------------------------
+-- 🔥 AUTO CLOSE OLD SCRIPT
+------------------------------------------------------------------
+if getgenv().TOKAI_UNLOAD then
+    pcall(getgenv().TOKAI_UNLOAD)
+end
+
+getgenv().TOKAI_UNLOAD = function()
+    _G.TOKAI_RUNNING = false
+end
+
+_G.TOKAI_RUNNING = true
+
+------------------------------------------------------------------
+-- 📦 LOAD UI LIBRARY
+------------------------------------------------------------------
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+local Window = Rayfield:CreateWindow({
+    Name = "Tokai Hub ⚔️",
+    LoadingTitle = "Loading...",
+    Theme = "Default"
+})
+
+------------------------------------------------------------------
 -- [ SERVICES ]
+------------------------------------------------------------------
 local Players = game:GetService("Players")
 local Workspace = game:GetService("Workspace")
 local RunService = game:GetService("RunService")
 local lighting = game:GetService("Lighting")
-local RS = game:GetService("ReplicatedStorage")
 
 local localPlayer = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
 
+------------------------------------------------------------------
 -- [ SETTINGS ]
+------------------------------------------------------------------
 local hitboxSize = 20
 local activeNPCs = {}
-local trackedParts = {}
 local originalSizes = {}
 
 local wallEnabled = false
 local outlineEnabled = false
-local silentEnabled = false
 local fastScanEnabled = false
 local fullBrightEnabled = false
 local alwaysDayEnabled = false
 
--- SILENT AIM
+-- HITBOX MODE
+local hitboxHeadEnabled = false
+local hitboxBodyEnabled = false
+
+-- AIM
 local silentAimEnabled = false
 local fovRadius = 180
-local showFovCircle = true
 
 ------------------------------------------------------------------
--- ✅ SAFE CACHE SYSTEM
+-- 🧠 NPC SYSTEM
 ------------------------------------------------------------------
 local function isValidNPC(model)
     if not model or not model.Parent then return false end
@@ -52,7 +80,7 @@ local function addNPC(model)
 end
 
 ------------------------------------------------------------------
--- ✅ SMART SCAN (NO LAG)
+-- 🔍 SCAN
 ------------------------------------------------------------------
 local lastScan = 0
 local function scanNPCs()
@@ -70,15 +98,13 @@ end
 Workspace.DescendantAdded:Connect(function(obj)
     if obj:IsA("Model") then
         task.delay(0.2, function()
-            if isValidNPC(obj) then
-                addNPC(obj)
-            end
+            if isValidNPC(obj) then addNPC(obj) end
         end)
     end
 end)
 
 ------------------------------------------------------------------
--- ✅ HEAD HITBOX (FINAL)
+-- 🎯 HITBOX SYSTEM
 ------------------------------------------------------------------
 local function updateHitbox()
     for model, data in pairs(activeNPCs) do
@@ -86,26 +112,34 @@ local function updateHitbox()
             activeNPCs[model] = nil
         else
             local head = model:FindFirstChild("Head")
+            local root = data.root
 
-            if head then
-                if silentEnabled then
-                    local size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+            -- HEAD HITBOX
+            if hitboxHeadEnabled and head then
+                if not originalSizes[model] then
+                    originalSizes[model] = {head = head.Size}
+                end
+                head.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+            end
 
-                    if not originalSizes[model] then
-                        originalSizes[model] = head.Size
+            -- BODY HITBOX
+            if hitboxBodyEnabled and root then
+                if not originalSizes[model] then
+                    originalSizes[model] = {root = root.Size}
+                end
+                root.Size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+            end
+
+            -- RESTORE
+            if not hitboxHeadEnabled and not hitboxBodyEnabled then
+                if originalSizes[model] then
+                    if head and originalSizes[model].head then
+                        head.Size = originalSizes[model].head
                     end
-
-                    if head.Size ~= size then
-                        head.Size = size
+                    if root and originalSizes[model].root then
+                        root.Size = originalSizes[model].root
                     end
-
-                    head.CanCollide = false
-
-                else
-                    if originalSizes[model] then
-                        head.Size = originalSizes[model]
-                        originalSizes[model] = nil
-                    end
+                    originalSizes[model] = nil
                 end
             end
         end
@@ -113,13 +147,12 @@ local function updateHitbox()
 end
 
 ------------------------------------------------------------------
--- ✅ ESP (NO RECREATE SPAM)
+-- 👁️ ESP
 ------------------------------------------------------------------
 local function updateESP()
     for model, data in pairs(activeNPCs) do
         if not model.Parent then continue end
 
-        -- OUTLINE
         if outlineEnabled then
             if not model:FindFirstChild("ESP_Outline") then
                 local h = Instance.new("Highlight")
@@ -133,7 +166,6 @@ local function updateESP()
             if h then h:Destroy() end
         end
 
-        -- SPHERE
         if wallEnabled then
             local part = data.head
             if part and not part:FindFirstChild("Wall_Box") then
@@ -155,29 +187,7 @@ local function updateESP()
 end
 
 ------------------------------------------------------------------
--- ✅ SILENT AIM
-------------------------------------------------------------------
-local function getClosestNPC()
-    local closest, dist = nil, fovRadius
-
-    for model, data in pairs(activeNPCs) do
-        if model.Parent then
-            local pos, visible = camera:WorldToViewportPoint(data.head.Position)
-            if visible then
-                local d = (Vector2.new(pos.X, pos.Y) - camera.ViewportSize/2).Magnitude
-                if d < dist then
-                    closest = model
-                    dist = d
-                end
-            end
-        end
-    end
-
-    return closest
-end
-
-------------------------------------------------------------------
--- ✅ LIGHTING
+-- 💡 LIGHTING
 ------------------------------------------------------------------
 local function updateLighting()
     if fullBrightEnabled then
@@ -190,29 +200,80 @@ local function updateLighting()
 end
 
 ------------------------------------------------------------------
--- ✅ MAIN LOOP
+-- 🧩 UI
 ------------------------------------------------------------------
-local lastESP = 0
-local lastHitbox = 0
+local Combat = Window:CreateTab("Combat ⚔️")
 
-RunService.Heartbeat:Connect(function()
+Combat:CreateToggle({
+    Name = "Silent Aim",
+    CurrentValue = false,
+    Callback = function(v) silentAimEnabled = v end
+})
+
+Combat:CreateToggle({
+    Name = "Hitbox Head",
+    CurrentValue = false,
+    Callback = function(v) hitboxHeadEnabled = v end
+})
+
+Combat:CreateToggle({
+    Name = "Hitbox Body",
+    CurrentValue = false,
+    Callback = function(v) hitboxBodyEnabled = v end
+})
+
+Combat:CreateSlider({
+    Name = "Hitbox Size",
+    Range = {2, 12},
+    Increment = 1,
+    CurrentValue = 6,
+    Callback = function(v) hitboxSize = v end
+})
+
+local Visual = Window:CreateTab("Visual 👁️")
+
+Visual:CreateToggle({
+    Name = "ESP Outline",
+    CurrentValue = false,
+    Callback = function(v) outlineEnabled = v end
+})
+
+Visual:CreateToggle({
+    Name = "ESP Sphere",
+    CurrentValue = false,
+    Callback = function(v) wallEnabled = v end
+})
+
+Visual:CreateToggle({
+    Name = "FullBright",
+    CurrentValue = false,
+    Callback = function(v) fullBrightEnabled = v end
+})
+
+Visual:CreateToggle({
+    Name = "Always Day",
+    CurrentValue = false,
+    Callback = function(v) alwaysDayEnabled = v end
+})
+
+------------------------------------------------------------------
+-- 🔄 LOOP
+------------------------------------------------------------------
+local hbConnection
+hbConnection = RunService.Heartbeat:Connect(function()
+    if not _G.TOKAI_RUNNING then
+        hbConnection:Disconnect()
+        return
+    end
+
     scanNPCs()
-
-    if tick() - lastHitbox > 0.1 then
-        lastHitbox = tick()
-        updateHitbox()
-    end
-
-    if tick() - lastESP > 0.3 then
-        lastESP = tick()
-        updateESP()
-    end
-
+    updateHitbox()
+    updateESP()
     updateLighting()
 end)
 
 ------------------------------------------------------------------
--- ✅ INIT
+-- 🚀 INIT
 ------------------------------------------------------------------
 for _, m in ipairs(Workspace:GetDescendants()) do
     if m:IsA("Model") and isValidNPC(m) then
@@ -220,4 +281,4 @@ for _, m in ipairs(Workspace:GetDescendants()) do
     end
 end
 
-print("Tokai Hub FULL OPTIMIZED (HEAD HITBOX) Loaded 🚀")
+print("Tcatz HUB Loaded")
