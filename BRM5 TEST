@@ -1,4 +1,4 @@
--- [[ TOKAI HUB - OPTIMIZED FULL FEATURE ]]
+-- [[ TOKAI HUB - OPTIMIZED FULL FEATURE (HEAD HITBOX) ]]
 
 -- [ SERVICES ]
 local Players = game:GetService("Players")
@@ -78,27 +78,34 @@ Workspace.DescendantAdded:Connect(function(obj)
 end)
 
 ------------------------------------------------------------------
--- ✅ HITBOX (OPTIMIZED)
+-- ✅ HEAD HITBOX (FINAL)
 ------------------------------------------------------------------
 local function updateHitbox()
     for model, data in pairs(activeNPCs) do
         if not model.Parent then
             activeNPCs[model] = nil
         else
-            local root = data.root
-            if silentEnabled then
-                local size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+            local head = model:FindFirstChild("Head")
 
-                if root.Size ~= size then
+            if head then
+                if silentEnabled then
+                    local size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+
                     if not originalSizes[model] then
-                        originalSizes[model] = root.Size
+                        originalSizes[model] = head.Size
                     end
-                    root.Size = size
-                end
-            else
-                if originalSizes[model] then
-                    root.Size = originalSizes[model]
-                    originalSizes[model] = nil
+
+                    if head.Size ~= size then
+                        head.Size = size
+                    end
+
+                    head.CanCollide = false
+
+                else
+                    if originalSizes[model] then
+                        head.Size = originalSizes[model]
+                        originalSizes[model] = nil
+                    end
                 end
             end
         end
@@ -148,7 +155,7 @@ local function updateESP()
 end
 
 ------------------------------------------------------------------
--- ✅ SILENT AIM (UNCHANGED LOGIC, SAFE)
+-- ✅ SILENT AIM
 ------------------------------------------------------------------
 local function getClosestNPC()
     local closest, dist = nil, fovRadius
@@ -183,7 +190,7 @@ local function updateLighting()
 end
 
 ------------------------------------------------------------------
--- ✅ MAIN LOOP (SMOOTH ENGINE)
+-- ✅ MAIN LOOP
 ------------------------------------------------------------------
 local lastESP = 0
 local lastHitbox = 0
@@ -213,4 +220,4 @@ for _, m in ipairs(Workspace:GetDescendants()) do
     end
 end
 
-print("Tokai Hub FULL OPTIMIZED Loaded 🚀")
+print("Tokai Hub FULL OPTIMIZED (HEAD HITBOX) Loaded 🚀")
