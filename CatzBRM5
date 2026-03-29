@@ -1,166 +1,135 @@
--- [[ TOKAI HUB - OPTIMIZED FULL FEATURE ]]
+-- [[ TOKAI HUB - UNIVERSAL (CLEAN) ]]
 
--- [ SERVICES ]
-local Players = game:GetService("Players")
-local Workspace = game:GetService("Workspace")
-local RunService = game:GetService("RunService")
-local lighting = game:GetService("Lighting")
-local RS = game:GetService("ReplicatedStorage")
+--// SERVICES
+local Services = {
+    UIS = game:GetService("UserInputService"),
+    Tween = game:GetService("TweenService"),
+    Run = game:GetService("RunService"),
+    Sound = game:GetService("SoundService"),
+    Players = game:GetService("Players"),
+    Workspace = game:GetService("Workspace"),
+    RS = game:GetService("ReplicatedStorage"),
+    Lighting = game:GetService("Lighting")
+}
 
-local localPlayer = Players.LocalPlayer
-local camera = Workspace.CurrentCamera
+--// SHORTCUTS
+local LP = Services.Players.LocalPlayer
+local Camera = Services.Workspace.CurrentCamera
 
--- [ SETTINGS ]
-local hitboxSize = 20
-local activeNPCs = {}
-local trackedParts = {}
-local originalSizes = {}
+--// GLOBAL SAFE
+local getgenv = getgenv or function() return _G end
+local identifyexecutor = identifyexecutor or function() return "Unknown" end
 
-local wallEnabled = false
-local outlineEnabled = false
-local silentEnabled = false
-local fastScanEnabled = false
-local fullBrightEnabled = false
-local alwaysDayEnabled = false
+---------------------------------------------------------------------
+-- SETTINGS
+---------------------------------------------------------------------
+local Settings = {
+    HitboxSize = 20,
+    FOV = 180,
 
--- SILENT AIM
-local silentAimEnabled = false
-local fovRadius = 180
-local showFovCircle = true
+    SilentAim = false,
+    SilentHitbox = false,
 
-------------------------------------------------------------------
--- ✅ SAFE CACHE SYSTEM
-------------------------------------------------------------------
-local function isValidNPC(model)
-    if not model or not model.Parent then return false end
-    local name = model.Name:lower()
-    return name:find("zombie") or model:FindFirstChild("AI_")
-end
+    ShowHitbox = false,
+    ShowFOV = true,
 
-local function addNPC(model)
-    if activeNPCs[model] then return end
+    ESP_Sphere = false,
+    ESP_Outline = false,
 
-    local head = model:FindFirstChild("Head")
-    local root = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("UpperTorso")
+    FullBright = false,
+    AlwaysDay = false,
+    NoFog = false,
 
-    if root then
-        activeNPCs[model] = {
-            head = head or root,
-            root = root
-        }
-    end
-end
+    FastScan = false,
 
-------------------------------------------------------------------
--- ✅ SMART SCAN (NO LAG)
-------------------------------------------------------------------
-local lastScan = 0
-local function scanNPCs()
-    if not fastScanEnabled then return end
-    if tick() - lastScan < 0.5 then return end
-    lastScan = tick()
+    WeaponMods = {
+        NoRecoil = false,
+        Firemodes = false
+    }
+}
 
-    for _, m in ipairs(Workspace:GetDescendants()) do
-        if m:IsA("Model") and isValidNPC(m) then
-            addNPC(m)
-        end
-    end
-end
+---------------------------------------------------------------------
+-- STORAGE
+---------------------------------------------------------------------
+local NPCs = {}
+local TrackedParts = {}
+local OriginalSizes = {}
 
-Workspace.DescendantAdded:Connect(function(obj)
-    if obj:IsA("Model") then
-        task.delay(0.2, function()
-            if isValidNPC(obj) then
-                addNPC(obj)
-            end
-        end)
+---------------------------------------------------------------------
+-- COLORS
+---------------------------------------------------------------------
+local Colors = {
+    Zombie = Color3.fromRGB(255,0,0),
+    Male = Color3.fromRGB(0,255,0),
+    Hitbox = Color3.fromRGB(255,0,0)
+}
+
+---------------------------------------------------------------------
+-- FOV DRAW
+---------------------------------------------------------------------
+local FOVCircle
+pcall(function()
+    if Drawing.new then
+        FOVCircle = Drawing.new("Circle")
+        FOVCircle.Filled = false
+        FOVCircle.Thickness = 1.5
+        FOVCircle.Color = Color3.new(1,1,1)
     end
 end)
 
-------------------------------------------------------------------
--- ✅ HITBOX (OPTIMIZED)
-------------------------------------------------------------------
-local function updateHitbox()
-    for model, data in pairs(activeNPCs) do
-        if not model.Parent then
-            activeNPCs[model] = nil
-        else
-            local root = data.root
-            if silentEnabled then
-                local size = Vector3.new(hitboxSize, hitboxSize, hitboxSize)
+---------------------------------------------------------------------
+-- UTIL
+---------------------------------------------------------------------
+local function GetCenter()
+    return Camera.ViewportSize / 2
+end
 
-                if root.Size ~= size then
-                    if not originalSizes[model] then
-                        originalSizes[model] = root.Size
-                    end
-                    root.Size = size
-                end
-            else
-                if originalSizes[model] then
-                    root.Size = originalSizes[model]
-                    originalSizes[model] = nil
-                end
+local function IsZombie(name)
+    return string.find(name:lower(), "zombie")
+end
+
+local function IsValidNPC(model)
+    if not model or not model.Parent then return false end
+
+    if IsZombie(model.Name) then return true end
+
+    if model.Name == "Male" then
+        for _,v in ipairs(model:GetChildren()) do
+            if v.Name:sub(1,3) == "AI_" then
+                return true
             end
         end
     end
 end
 
-------------------------------------------------------------------
--- ✅ ESP (NO RECREATE SPAM)
-------------------------------------------------------------------
-local function updateESP()
-    for model, data in pairs(activeNPCs) do
-        if not model.Parent then continue end
+---------------------------------------------------------------------
+-- VISIBILITY
+---------------------------------------------------------------------
+local function IsVisible(model)
+    if not model:FindFirstChild("Head") then return false end
 
-        -- OUTLINE
-        if outlineEnabled then
-            if not model:FindFirstChild("ESP_Outline") then
-                local h = Instance.new("Highlight")
-                h.Name = "ESP_Outline"
-                h.FillTransparency = 1
-                h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
-                h.Parent = model
-            end
-        else
-            local h = model:FindFirstChild("ESP_Outline")
-            if h then h:Destroy() end
-        end
+    local parts = Camera:GetPartsObscuringTarget(
+        {model.Head.Position},
+        {LP.Character, model}
+    )
 
-        -- SPHERE
-        if wallEnabled then
-            local part = data.head
-            if part and not part:FindFirstChild("Wall_Box") then
-                local s = Instance.new("SphereHandleAdornment")
-                s.Name = "Wall_Box"
-                s.Radius = 1.2
-                s.Adornee = part
-                s.AlwaysOnTop = true
-                s.Transparency = 0.3
-                s.Parent = part
-            end
-        else
-            local part = data.head
-            if part and part:FindFirstChild("Wall_Box") then
-                part.Wall_Box:Destroy()
-            end
-        end
-    end
+    return #parts == 0
 end
 
-------------------------------------------------------------------
--- ✅ SILENT AIM (UNCHANGED LOGIC, SAFE)
-------------------------------------------------------------------
-local function getClosestNPC()
-    local closest, dist = nil, fovRadius
+local function GetClosestNPC()
+    local closest, dist = nil, Settings.FOV
+    local center = GetCenter()
 
-    for model, data in pairs(activeNPCs) do
-        if model.Parent then
-            local pos, visible = camera:WorldToViewportPoint(data.head.Position)
+    for model,data in pairs(NPCs) do
+        if model.Parent and data.head then
+            local pos, visible = Camera:WorldToViewportPoint(data.head.Position)
+
             if visible then
-                local d = (Vector2.new(pos.X, pos.Y) - camera.ViewportSize/2).Magnitude
-                if d < dist then
+                local mag = (Vector2.new(pos.X,pos.Y) - center).Magnitude
+
+                if mag < dist and IsVisible(model) then
                     closest = model
-                    dist = d
+                    dist = mag
                 end
             end
         end
@@ -169,48 +138,226 @@ local function getClosestNPC()
     return closest
 end
 
-------------------------------------------------------------------
--- ✅ LIGHTING
-------------------------------------------------------------------
-local function updateLighting()
-    if fullBrightEnabled then
-        lighting.Brightness = 2
-        lighting.Ambient = Color3.new(1,1,1)
+---------------------------------------------------------------------
+-- HITBOX
+---------------------------------------------------------------------
+local function ApplyHitbox(model, root)
+    if not OriginalSizes[model] then
+        OriginalSizes[model] = root.Size
     end
-    if alwaysDayEnabled then
-        lighting.ClockTime = 12
+
+    root.Size = Vector3.new(Settings.HitboxSize,Settings.HitboxSize,Settings.HitboxSize)
+    root.Transparency = Settings.ShowHitbox and 0.8 or 1
+
+    if Settings.ShowHitbox then
+        root.Color = Colors.Hitbox
+        root.Material = Enum.Material.Neon
     end
 end
 
-------------------------------------------------------------------
--- ✅ MAIN LOOP (SMOOTH ENGINE)
-------------------------------------------------------------------
-local lastESP = 0
-local lastHitbox = 0
+local function RestoreHitbox(model)
+    local root = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("UpperTorso")
 
-RunService.Heartbeat:Connect(function()
-    scanNPCs()
-
-    if tick() - lastHitbox > 0.1 then
-        lastHitbox = tick()
-        updateHitbox()
+    if root and OriginalSizes[model] then
+        root.Size = OriginalSizes[model]
+        root.Transparency = 1
+        OriginalSizes[model] = nil
     end
+end
 
-    if tick() - lastESP > 0.3 then
-        lastESP = tick()
-        updateESP()
+---------------------------------------------------------------------
+-- ESP
+---------------------------------------------------------------------
+local function CreateSphere(part, model)
+    if part:FindFirstChild("Wall_Box") then return end
+
+    local s = Instance.new("SphereHandleAdornment")
+    s.Name = "Wall_Box"
+    s.Radius = 1.2
+    s.Adornee = part
+    s.AlwaysOnTop = true
+    s.Transparency = 0.3
+
+    s.Color3 = IsZombie(model.Name) and Colors.Zombie or Colors.Male
+    s.Parent = part
+
+    TrackedParts[part] = true
+end
+
+local function ApplyOutline(model)
+    local h = model:FindFirstChild("ESP_Outline")
+
+    if Settings.ESP_Outline and IsValidNPC(model) then
+        if not h then
+            h = Instance.new("Highlight")
+            h.Name = "ESP_Outline"
+            h.Parent = model
+        end
+
+        h.FillTransparency = 1
+        h.OutlineColor = IsZombie(model.Name) and Colors.Zombie or Colors.Male
+        h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    elseif h then
+        h:Destroy()
     end
+end
 
-    updateLighting()
+---------------------------------------------------------------------
+-- NPC REGISTER
+---------------------------------------------------------------------
+local function AddNPC(model)
+    if NPCs[model] or not IsValidNPC(model) then return end
+
+    local root = model:FindFirstChild("HumanoidRootPart") or model:FindFirstChild("UpperTorso")
+    local head = model:FindFirstChild("Head") or root
+
+    if root then
+        NPCs[model] = {root = root, head = head}
+
+        if Settings.ESP_Sphere then
+            CreateSphere(head, model)
+        end
+
+        ApplyOutline(model)
+    end
+end
+
+---------------------------------------------------------------------
+-- WEAPON PATCH
+---------------------------------------------------------------------
+local function PatchWeapons()
+    pcall(function()
+        local folder = Services.RS:FindFirstChild("Shared")
+        folder = folder and folder:FindFirstChild("Configs")
+        folder = folder and folder:FindFirstChild("Weapon")
+        folder = folder and folder:FindFirstChild("Weapons_Player")
+
+        if not folder then return end
+
+        for _,platform in pairs(folder:GetChildren()) do
+            if platform.Name:match("^Platform_") then
+                for _,weapon in pairs(platform:GetChildren()) do
+                    for _,mod in pairs(weapon:GetChildren()) do
+                        if mod:IsA("ModuleScript") and mod.Name:match("^Receiver") then
+                            task.spawn(function()
+                                local ok, data = pcall(require, mod)
+                                if ok and data.Config then
+                                    local tune = data.Config.Tune
+
+                                    if Settings.WeaponMods.NoRecoil then
+                                        tune.Recoil_X = 0
+                                        tune.Recoil_Z = 0
+                                        tune.RecoilForce_Tap = 0
+                                    end
+
+                                    if Settings.WeaponMods.Firemodes then
+                                        tune.Firemodes = {3,2,1,0}
+                                    end
+                                end
+                            end)
+                        end
+                    end
+                end
+            end
+        end
+    end)
+end
+
+---------------------------------------------------------------------
+-- HOOK
+---------------------------------------------------------------------
+task.spawn(function()
+    pcall(function()
+        local muzzle = filtergc('function',{Name='GetMuzzleCFrame'},true)
+
+        if muzzle then
+            local old
+            old = hookfunction(muzzle,function(self,cast)
+                local origin,barrel,cf = old(self,cast)
+
+                if Settings.SilentAim and not cast then
+                    local npc = GetClosestNPC()
+                    if npc and npc:FindFirstChild("Head") then
+                        return CFrame.new(origin.Position,npc.Head.Position),barrel,cf
+                    end
+                end
+
+                return origin,barrel,cf
+            end)
+        end
+    end)
 end)
 
-------------------------------------------------------------------
--- ✅ INIT
-------------------------------------------------------------------
-for _, m in ipairs(Workspace:GetDescendants()) do
-    if m:IsA("Model") and isValidNPC(m) then
-        addNPC(m)
+---------------------------------------------------------------------
+-- LOOPS
+---------------------------------------------------------------------
+-- SCAN
+task.spawn(function()
+    while true do
+        if Settings.FastScan then
+            for _,m in ipairs(Services.Workspace:GetDescendants()) do
+                if m:IsA("Model") then
+                    AddNPC(m)
+                end
+            end
+        end
+        task.wait(0.001)
+    end
+end)
+
+-- HITBOX
+task.spawn(function()
+    while true do
+        if Settings.SilentHitbox then
+            for m,d in pairs(NPCs) do
+                if m.Parent then
+                    ApplyHitbox(m,d.root)
+                end
+            end
+        else
+            for m in pairs(OriginalSizes) do
+                RestoreHitbox(m)
+            end
+        end
+        task.wait(0.1)
+    end
+end)
+
+-- RENDER
+Services.Run.RenderStepped:Connect(function()
+    local center = GetCenter()
+
+    if FOVCircle then
+        FOVCircle.Visible = Settings.ShowFOV and Settings.SilentAim
+        FOVCircle.Position = center
+        FOVCircle.Radius = Settings.FOV
+    end
+
+    if Settings.FullBright then
+        Services.Lighting.Brightness = 2
+        Services.Lighting.Ambient = Color3.new(1,1,1)
+    end
+
+    if Settings.AlwaysDay then
+        Services.Lighting.ClockTime = 12
+    end
+end)
+
+---------------------------------------------------------------------
+-- INIT
+---------------------------------------------------------------------
+for _,m in ipairs(Services.Workspace:GetDescendants()) do
+    if m:IsA("Model") then
+        AddNPC(m)
     end
 end
 
-print("Tokai Hub FULL OPTIMIZED Loaded 🚀")
+Services.Workspace.DescendantAdded:Connect(function(m)
+    if m:IsA("Model") then
+        task.delay(0.1,function()
+            AddNPC(m)
+        end)
+    end
+end)
+
+print("Tokai Hub Clean Loaded!")
