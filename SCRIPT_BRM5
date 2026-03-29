@@ -20,7 +20,7 @@ local localPlayer = Players.LocalPlayer
 local camera = Workspace.CurrentCamera
 local centerPosition = camera.ViewportSize / 2
 
-local hitboxSize = 30 
+local hitboxSize = 30
 local activeNPCs = {}      
 local trackedParts = {}    
 local originalSizes = {} 
