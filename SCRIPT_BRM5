@@ -258,13 +258,13 @@ local Window = Rayfield:CreateWindow({
     Theme = "Default" 
 })
 
-local CombatTab = Window:CreateTab("Combat ⚔️")
+local CombatTab = Window:CreateTab("Combat")
 CombatTab:CreateToggle({ Name = "Silent Aim (Hook)", CurrentValue = false, Callback = function(v) silentAimEnabled = v end })
 CombatTab:CreateToggle({ Name = "Silent Hitbox", CurrentValue = false, Callback = function(v) silentEnabled = v end })
 CombatTab:CreateToggle({ Name = "Show Hitbox Visual", CurrentValue = false, Callback = function(v) showHitbox = v end })
 CombatTab:CreateSlider({ Name = "Hitbox Size", Range = {0, 20}, Increment = 1, CurrentValue = 20, Callback = function(v) hitboxSize = v end })
 
-local FovTab = Window:CreateTab("FOV Settings ⭕")
+local FovTab = Window:CreateTab("FOV Settings")
 FovTab:CreateToggle({ Name = "Show FOV Circle", CurrentValue = true, Callback = function(v) showFovCircle = v end })
 FovTab:CreateSlider({ Name = "FOV Radius", Range = {0, 500}, Increment = 1, CurrentValue = 180, Callback = function(v) fovRadius = v end })
 
